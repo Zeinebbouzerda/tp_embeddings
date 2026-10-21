@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Présentation des résultats du TP sur les embeddings, la similarité sémantique et la classification zero-shot.">
+  <title>Embeddings — Du texte au sens | TP Mundiapolis</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --surface: #11182b;
+      --surface-2: #151e33;
+      --line: rgba(195, 208, 235, .12);
+      --text: #f1f4fb;
+      --muted: #a1aec5;
+      --blue: #7c9cff;
+      --cyan: #79ded2;
+      --amber: #f0bb75;
+      --green: #78d7aa;
+      --radius: 20px;
+      --content: 1120px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 80% 0%, rgba(73, 101, 197, .13), transparent 36rem),
+        var(--bg);
+      color: var(--text);
+      font: 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button { font: inherit; }
+    .progress { position: fixed; inset: 0 auto auto 0; z-index: 20; height: 3px; width: 0; background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, .84);
+      backdrop-filter: blur(16px);
+    }
+    .topbar-inner { max-width: var(--content); margin: auto; padding: 0 28px; min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-size: 13px; font-weight: 750; letter-spacing: .04em; white-space: nowrap; }
+    .brand-mark { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 10px; background: linear-gradient(140deg, var(--blue), #6678e9); color: #0b1020; font-size: 18px; }
+    .nav { display: flex; align-items: center; gap: 23px; }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 650; transition: color .2s; }
+    .nav a:hover, .nav a:focus-visible { color: var(--text); }
+    .nav-cta { border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; }
+    .menu-button { display: none; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 10px; padding: 7px 10px; }
+    main { overflow: hidden; }
+    .wrap { width: min(var(--content), 100% - 56px); margin: 0 auto; }
+    .hero { position: relative; padding: 92px 0 76px; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; align-items: center; gap: 50px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: var(--cyan); text-transform: uppercase; letter-spacing: .15em; font-size: 10px; font-weight: 800; }
+    .eyebrow::before { content: ""; width: 22px; height: 1px; background: currentColor; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 640px; margin: 19px 0 20px; font-size: clamp(45px, 6.3vw, 76px); line-height: .99; letter-spacing: -.065em; font-weight: 780; }
+    h1 span { color: var(--blue); }
+    .hero-copy { max-width: 570px; color: #bac5d9; font-size: 17px; line-height: 1.75; }
+    .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .button { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 10px; padding: 11px 16px; text-decoration: none; font-size: 13px; font-weight: 750; transition: transform .2s, border-color .2s; }
+    .button:hover { transform: translateY(-2px); border-color: rgba(124, 156, 255, .65); }
+    .button-primary { border-color: transparent; background: var(--blue); color: #0b1020; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 34px; color: var(--muted); font-size: 12px; }
+    .hero-meta strong { color: #e4eaf5; font-weight: 650; }
+    .hero-art { position: relative; min-height: 335px; display: grid; place-items: center; }
+    .orb { position: absolute; width: min(380px, 100%); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 42% 38%, rgba(124,156,255,.18), rgba(20,30,55,.38) 43%, transparent 69%); }
+    .vector-card { position: relative; z-index: 1; width: min(400px, 100%); border: 1px solid rgba(196, 211, 242, .16); border-radius: 22px; padding: 24px; background: linear-gradient(150deg, rgba(24,35,60,.92), rgba(15,21,38,.88)); box-shadow: 0 26px 80px rgba(0,0,0,.34); transform: rotate(-2deg); }
+    .vector-top { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 13px var(--green); }
+    .vector-phrase { margin: 26px 0 19px; font-family: Georgia, serif; font-size: 19px; color: #f3f5fb; }
+    .vector-arrow { color: var(--blue); font-size: 18px; margin: 0 4px; }
+    .vector-bars { display: flex; gap: 5px; align-items: end; height: 62px; padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
+    .vector-bars i { display: block; width: 8%; border-radius: 4px 4px 0 0; background: linear-gradient(0deg, rgba(124,156,255,.25), var(--blue)); opacity: .85; }
+    .vector-bars i:nth-child(1) { height: 42%; }.vector-bars i:nth-child(2) { height: 84%; }.vector-bars i:nth-child(3) { height: 59%; }.vector-bars i:nth-child(4) { height: 100%; }.vector-bars i:nth-child(5) { height: 48%; }.vector-bars i:nth-child(6) { height: 72%; }.vector-bars i:nth-child(7) { height: 33%; }.vector-bars i:nth-child(8) { height: 92%; }.vector-bars i:nth-child(9) { height: 64%; }.vector-bars i:nth-child(10) { height: 38%; }.vector-bars i:nth-child(11) { height: 78%; }
+    .vector-foot { display: flex; justify-content: space-between; gap: 12px; padding-top: 12px; color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .vector-foot strong { color: var(--cyan); font-weight: 600; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--radius); background: rgba(17,24,43,.83); overflow: hidden; }
+    .metric { min-height: 115px; padding: 22px 24px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric-value { display: block; color: var(--text); font-size: 28px; line-height: 1.2; font-weight: 760; letter-spacing: -.04em; }
+    .metric-label { display: block; margin-top: 7px; color: var(--muted); font-size: 11px; }
+    .section { padding: 94px 0; }
+    .section + .section { border-top: 1px solid var(--line); }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 32px; margin-bottom: 35px; }
+    .section-kicker { display: block; margin-bottom: 10px; color: var(--cyan); text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 800; }
+    h2 { max-width: 720px; margin-bottom: 0; font-size: clamp(30px, 4.2vw, 47px); line-height: 1.12; letter-spacing: -.045em; }
+    .section-intro { max-width: 445px; margin: 0; color: var(--muted); font-size: 14px; }
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(21,30,51,.92), rgba(16,23,40,.94)); padding: 25px; }
+    .panel-full { grid-column: 1 / -1; }
+    .panel-label { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; font-size: 10px; font-weight: 760; }
+    .panel-label .number { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--cyan); font-size: 10px; }
+    h3 { margin-bottom: 9px; font-size: 19px; line-height: 1.35; letter-spacing: -.025em; }
+    .panel-copy { margin-bottom: 21px; color: var(--muted); font-size: 12px; }
+    .score-rows { display: grid; gap: 14px; }
+    .score-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(100px, 1.45fr) 44px; align-items: center; gap: 12px; }
+    .score-name { color: #d8e0ef; font-size: 11px; }
+    .track { height: 8px; border-radius: 20px; background: #242e45; overflow: hidden; }
+    .fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #637ff0, var(--cyan)); }
+    .fill.warm { background: linear-gradient(90deg, #d4985c, var(--amber)); }
+    .score-value { color: var(--text); text-align: right; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .tag { display: inline-flex; align-items: center; border: 1px solid rgba(121,222,210,.2); border-radius: 999px; padding: 4px 9px; color: var(--cyan); font-size: 10px; font-weight: 700; }
+    .tag-warm { border-color: rgba(240,187,117,.24); color: var(--amber); }
+    .insight { margin-top: 20px; padding: 12px 14px; border-left: 2px solid var(--blue); border-radius: 0 9px 9px 0; background: rgba(124,156,255,.07); color: #c5cfe0; font-size: 12px; }
+    .language-list { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 15px; }
+    .language-item { padding: 13px 12px; border: 1px solid var(--line); border-radius: 12px; }
+    .language-item span { display: block; color: var(--muted); font-size: 10px; }
+    .language-item strong { display: block; margin-top: 5px; color: var(--text); font: 17px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .language-summary { margin-top: 13px; color: #c5cfe0; font-size: 12px; }
+    .dimension-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-top: 19px; }
+    .dimension-item { border: 1px solid var(--line); border-radius: 13px; padding: 15px; background: rgba(9,14,27,.35); }
+    .dimension-item strong { display: block; font-size: 12px; }
+    .dimension-item .dimension-score { display: block; margin: 11px 0 4px; color: var(--blue); font: 25px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .dimension-item small { color: var(--muted); font-size: 10px; }
+    .caveat { margin: 16px 0 0; color: var(--muted); font-size: 11px; }
+    .accuracy { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 23px; margin: 8px 0 19px; }
+    .accuracy-ring { width: 108px; height: 108px; display: grid; place-items: center; border-radius: 50%; background: conic-gradient(var(--green) 0 100%, #273249 100%); position: relative; }
+    .accuracy-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--surface); }
+    .accuracy-ring span { position: relative; font-size: 22px; font-weight: 780; }
+    .accuracy-copy strong { display: block; font-size: 14px; }
+    .accuracy-copy p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .category-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .category-chips span { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: #d4ddec; font-size: 10px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11px; }
+    th { padding: 12px 14px; background: rgba(7,12,24,.38); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 9px; font-weight: 750; }
+    td { padding: 13px 14px; border-top: 1px solid var(--line); color: #d9e1ee; }
+    td:last-child { color: var(--cyan); font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .table-note { margin: 12px 2px 0; color: var(--muted); font-size: 10px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+    .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 30px; }
+    .step { position: relative; min-height: 160px; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: rgba(17,24,43,.7); }
+    .step-index { display: grid; width: 27px; height: 27px; place-items: center; margin-bottom: 17px; border-radius: 9px; background: rgba(124,156,255,.13); color: var(--blue); font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .step strong { display: block; margin-bottom: 6px; font-size: 12px; }
+    .step p { margin: 0; color: var(--muted); font-size: 10px; }
+    .note-box { border: 1px solid rgba(240,187,117,.2); border-radius: 15px; padding: 18px; background: rgba(240,187,117,.055); }
+    .note-box h3 { color: var(--amber); font-size: 14px; }
+    .note-box p { margin: 0; color: #c6cbd6; font-size: 12px; }
+    .status-list { display: grid; gap: 10px; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 11px; color: #d8e0ed; font-size: 11px; }
+    .status-row span:last-child { color: var(--muted); text-align: right; font-size: 10px; }
+    .status-ok { color: var(--green) !important; }
+    .conclusion { position: relative; overflow: hidden; padding: 35px; border: 1px solid rgba(124,156,255,.2); border-radius: var(--radius); background: radial-gradient(ellipse at 100% 0%, rgba(124,156,255,.13), transparent 48%), #11182a; }
+    .conclusion h2 { max-width: 750px; font-size: clamp(26px, 3.5vw, 38px); }
+    .conclusion p { max-width: 790px; margin: 16px 0 0; color: #c0cadb; font-size: 13px; }
+    .takeaways { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 25px; }
+    .takeaway { padding-top: 13px; border-top: 1px solid var(--line); }
+    .takeaway strong { display: block; color: var(--cyan); font-size: 11px; }
+    .takeaway span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+    footer { border-top: 1px solid var(--line); padding: 24px 0 34px; color: var(--muted); font-size: 10px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 14px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    @media (max-width: 800px) {
+      .nav { gap: 13px; }.nav a { font-size: 10px; }
+      .hero { padding-top: 65px; }.hero-grid { gap: 25px; }
+      .metric { padding: 19px 16px; }.metric-value { font-size: 24px; }
+      .section { padding: 72px 0; }.section-head { display: block; }.section-intro { margin-top: 14px; }
+      .steps { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 620px) {
+      .topbar-inner { min-height: 60px; padding: 0 18px; }.wrap { width: min(var(--content), 100% - 36px); }
+      .menu-button { display: inline-flex; }
+      .nav { display: none; position: absolute; inset: 60px 0 auto; padding: 12px 18px 17px; background: #0e1425; border-bottom: 1px solid var(--line); }
+      .nav.open { display: grid; grid-template-columns: 1fr 1fr; }.nav a { padding: 8px 0; font-size: 12px; }
+      .nav .nav-cta { justify-self: start; padding: 6px 11px; }
+      .hero { padding: 54px 0 40px; }.hero-grid { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(43px, 13vw, 65px); }.hero-copy { font-size: 15px; }
+      .hero-art { min-height: 270px; }.vector-card { max-width: 370px; }
+      .metrics { grid-template-columns: 1fr 1fr; }.metric:nth-child(2) { border-right: 0; }.metric:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .metric { min-height: 100px; padding: 17px; }.metric-value { font-size: 23px; }
+      .section { padding: 62px 0; }.results-grid, .split { grid-template-columns: 1fr; }.panel-full { grid-column: auto; }
+      .score-row { grid-template-columns: minmax(110px,1fr) minmax(70px,1fr) 42px; gap: 9px; }
+      .language-list { gap: 6px; }.language-item { padding: 11px 9px; }.language-item strong { font-size: 15px; }
+      .dimension-list { gap: 7px; }.dimension-item { padding: 11px; }.dimension-item .dimension-score { font-size: 20px; }
+      .steps { gap: 8px; }.step { min-height: 145px; padding: 14px; }
+      .conclusion { padding: 24px 20px; }.takeaways { grid-template-columns: 1fr; gap: 9px; }
+      .footer-inner { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#accueil" aria-label="Retour en haut de page">
+        <span class="brand-mark" aria-hidden="true">∿</span>
+        <span>LAB<span style="color:var(--blue)">.</span>EMBEDDINGS</span>
+      </a>
+      <button class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navigation">Menu</button>
+      <nav class="nav" id="navigation" aria-label="Navigation principale">
+        <a href="#resultats">Résultats</a>
+        <a href="#mesures">Mesures</a>
+        <a href="#methode">Méthode</a>
+        <a href="#bilan" class="nav-cta">Synthèse ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="accueil">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow">Travaux pratiques · IA & langage</span>
+          <h1>Du texte<br>au <span>sens.</span></h1>
+          <p class="hero-copy">Comment un modèle peut-il rapprocher deux phrases qui ne partagent presque aucun mot ? Exploration des embeddings, de la similarité sémantique et de la classification zero-shot.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#resultats">Explorer les résultats <span aria-hidden="true">↓</span></a>
+            <a class="button" href="#methode">Voir la démarche</a>
+          </div>
+          <div class="hero-meta">
+            <span><strong>Réalisé par</strong> Marwa Abid &amp; Zeineb Bouzarda</span>
+            <span><strong>Université Mundiapolis</strong></span>
+            <span>3ACINF DATA</span>
+            <span>Année 2026–2027</span>
+            <span>Pr. Habib AYAD</span>
+          </div>
+        </div>
+        <div class="hero-art" aria-label="Illustration d'une phrase transformée en vecteur numérique">
+          <div class="orb"></div>
+          <div class="vector-card">
+            <div class="vector-top"><span>ESPACE VECTORIEL</span><span class="live-dot" aria-label="Illustration"></span></div>
+            <p class="vector-phrase">« Le chat dort sur le canapé » <span class="vector-arrow">→</span></p>
+            <div class="vector-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="vector-foot"><span>[-0.008, 0.021, …]</span><strong>vecteur de sens</strong><span>1536 dim.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="wrap">
+      <section class="metrics" aria-label="Chiffres clés du TP">
+        <div class="metric"><span class="metric-value">10 / 10</span><span class="metric-label">phrases classées correctement</span></div>
+        <div class="metric"><span class="metric-value">0,96</span><span class="metric-label">similarité moyenne · paraphrases</span></div>
+        <div class="metric"><span class="metric-value">3 langues</span><span class="metric-label">français · anglais · arabe</span></div>
+        <div class="metric"><span class="metric-value">64 → 1536</span><span class="metric-label">dimensions testées</span></div>
+      </section>
+    </div>
+
+    <section class="section" id="resultats">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="section-kicker">01 — Résultats observés</span><h2>Le sens rapproche.<br>La formulation, moins.</h2></div>
+          <p class="section-intro">Les scores ci-dessous proviennent des sorties enregistrées dans le notebook. La similarité cosinus va de −1 à 1 ; plus elle se rapproche de 1, plus les vecteurs pointent dans une direction similaire.</p>
+        </div>
+
+        <div class="results-grid">
+          <article class="panel">
+            <div class="panel-label"><span class="number">A</span> Paraphrases & ambiguïtés</div>
+            <h3>Un même message, des mots différents</h3>
+            <p class="panel-copy">Comparaison de trois paraphrases avec trois phrases partageant des mots ou des contextes ambigus.</p>
+            <div class="score-rows" role="img" aria-label="Similarités des paraphrases: chat et félin 0,9363; café 0,9690; météo 0,9719. Phrases à sens différent: souris 0,8413; porte 0,8339; banque 0,7834.">
+              <div class="score-row"><span class="score-name">Chat / félin</span><div class="track"><div class="fill" style="width:93.63%"></div></div><span class="score-value">0,9363</span></div>
+              <div class="score-row"><span class="score-name">Café / appréciation</span><div class="track"><div class="fill" style="width:96.9%"></div></div><span class="score-value">0,9690</span></div>
+              <div class="score-row"><span class="score-name">Froid / température</span><div class="track"><div class="fill" style="width:97.19%"></div></div><span class="score-value">0,9719</span></div>
+              <div class="score-row"><span class="score-name">Souris (animal / outil)</span><div class="track"><div class="fill warm" style="width:84.13%"></div></div><span class="score-value">0,8413</span></div>
+              <div class="score-row"><span class="score-name">Porte (maison / football)</span><div class="track"><div class="fill warm" style="width:83.39%"></div></div><span class="score-value">0,8339</span></div>
+              <div class="score-row"><span class="score-name">Banque (finance / sable)</span><div class="track"><div class="fill warm" style="width:78.34%"></div></div><span class="score-value">0,7834</span></div>
+            </div>
+            <div class="insight">Les paraphrases obtiennent ici des scores élevés. Mais les phrases dites « de sens différent » restent elles aussi assez proches : le score seul ne suffit pas à trancher le sens exact.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-label"><span class="number">B</span> Représentation multilingue</div>
+            <h3>Une idée, trois langues</h3>
+            <p class="panel-copy">« J’aime le café » est comparé à deux traductions et à leur équivalent entre elles.</p>
+            <div class="language-list">
+              <div class="language-item"><span>Français ↔ anglais</span><strong>0,9298</strong></div>
+              <div class="language-item"><span>Français ↔ arabe</span><strong>0,9332</strong></div>
+              <div class="language-item"><span>Anglais ↔ arabe</span><strong>0,9528</strong></div>
+            </div>
+            <p class="language-summary"><span class="tag">Moyenne : 0,9386</span></p>
+            <div class="insight">Les trois formulations occupent des régions proches de l’espace vectoriel : la représentation capte ici un sens partagé malgré les différences de langue.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-label"><span class="number">C</span> Classification zero-shot</div>
+            <h3>Classer sans entraînement dédié</h3>
+            <p class="panel-copy">Chaque phrase est rapprochée de l’embedding des noms de catégories ; la catégorie la plus proche est retenue.</p>
+            <div class="accuracy">
+              <div class="accuracy-ring" aria-label="100 % de réussite"><span>100%</span></div>
+              <div class="accuracy-copy"><strong>10 prédictions correctes sur 10</strong><p>Le taux est resté identique avec des catégories simples et des descriptions plus détaillées.</p></div>
+            </div>
+            <div class="category-chips" aria-label="Catégories testées"><span>Sport</span><span>Politique</span><span>Technologie</span><span>Cuisine</span></div>
+            <div class="insight">Résultat encourageant sur ces exemples courts et nets. Dix phrases préparées ne constituent toutefois pas un benchmark représentatif de cas réels.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-label"><span class="number">D</span> Effet de la dimension</div>
+            <h3>Des vecteurs de tailles différentes</h3>
+            <p class="panel-copy">Similarité d’une même paire de paraphrases calculée avec les dimensions demandées.</p>
+            <div class="dimension-list">
+              <div class="dimension-item"><strong>64 dimensions</strong><span class="dimension-score">0,9790</span><small>64 valeurs conservées</small></div>
+              <div class="dimension-item"><strong>256 dimensions</strong><span class="dimension-score">0,9517</span><small>256 valeurs</small></div>
+              <div class="dimension-item"><strong>1536 dimensions</strong><span class="dimension-score">0,9288</span><small>1536 valeurs</small></div>
+            </div>
+            <p class="caveat"><span class="tag tag-warm">À interpréter avec prudence</span><br>La dimension 64 a été obtenue en gardant les 64 premières valeurs d’un vecteur de 128 dimensions ; les deux autres ont été demandées au modèle. Ces scores ne mesurent pas à eux seuls la qualité générale d’une dimension.</p>
+          </article>
+
+          <article class="panel panel-full" id="mesures">
+            <div class="panel-label"><span class="number">+</span> Détail des mesures · exercice 1</div>
+            <h3>Les six paires comparées</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Type</th><th>Phrase A</th><th>Phrase B</th><th>Cosinus</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="tag">Sens similaire</span></td><td>Le chat dort sur le canapé.</td><td>Le félin se repose sur le sofa.</td><td>0,9363</td></tr>
+                  <tr><td><span class="tag">Sens similaire</span></td><td>J’aime beaucoup le café.</td><td>J’apprécie énormément le café.</td><td>0,9690</td></tr>
+                  <tr><td><span class="tag">Sens similaire</span></td><td>Il fait très froid aujourd’hui.</td><td>La température est très basse aujourd’hui.</td><td>0,9719</td></tr>
+                  <tr><td><span class="tag tag-warm">Sens différent</span></td><td>La souris mange du fromage.</td><td>La souris permet de déplacer le curseur.</td><td>0,8413</td></tr>
+                  <tr><td><span class="tag tag-warm">Sens différent</span></td><td>Il a fermé la porte de la maison.</td><td>Il a marqué la porte au football.</td><td>0,8339</td></tr>
+                  <tr><td><span class="tag tag-warm">Sens différent</span></td><td>La banque accorde un crédit.</td><td>Il s’assoit sur la banque de sable.</td><td>0,7834</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">Scores reproduits depuis la sortie du notebook ; les phrases sont légèrement abrégées dans le tableau pour faciliter la lecture.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="methode">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="section-kicker">02 — Démarche du TP</span><h2>De la phrase<br>à la recherche.</h2></div>
+          <p class="section-intro">Le TP parcourt les briques qui permettent de transformer des textes en représentations numériques, de comparer leur proximité, puis de retrouver des contenus pertinents.</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="step-index">01</span><strong>Vectoriser</strong><p>Transformer les textes en vecteurs avec un modèle d’embeddings.</p></div>
+          <div class="step"><span class="step-index">02</span><strong>Comparer</strong><p>Mesurer la proximité avec le cosinus ou la distance euclidienne.</p></div>
+          <div class="step"><span class="step-index">03</span><strong>Indexer</strong><p>Associer documents et métadonnées dans un vector store.</p></div>
+          <div class="step"><span class="step-index">04</span><strong>Récupérer</strong><p>Classer les documents par pertinence pour une question.</p></div>
+        </div>
+        <div class="split" style="margin-top:18px">
+          <article class="panel">
+            <div class="panel-label"><span class="number">i</span> Concepts abordés</div>
+            <div class="status-list">
+              <div class="status-row"><span>Embeddings & similarité cosinus</span><span class="status-ok">Illustrés par des résultats</span></div>
+              <div class="status-row"><span>Classification zero-shot</span><span class="status-ok">10 / 10 sur le jeu test</span></div>
+              <div class="status-row"><span>Vector store & recherche sémantique</span><span>Exercices dans le notebook</span></div>
+              <div class="status-row"><span>PCA & découpage en chunks</span><span>Code présent, sorties absentes</span></div>
+            </div>
+          </article>
+          <aside class="note-box">
+            <h3>Note sur l’exécution</h3>
+            <p>Le notebook a d’abord rencontré une erreur d’authentification lors d’un appel OpenAI, puis les cellules finales ont été configurées avec <span class="mono">gemini-embedding-001</span>. Les scores présentés correspondent aux sorties effectivement enregistrées, pas aux cellules restées sans résultat. Aucun secret ni identifiant d’accès n’est repris sur cette page.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="bilan">
+      <div class="wrap">
+        <div class="conclusion">
+          <span class="section-kicker">03 — Bilan</span>
+          <h2>Un embedding ne lit pas les mots : il rapproche des représentations du sens.</h2>
+          <p>Les mesures illustrent le potentiel des embeddings : reconnaître des paraphrases, rapprocher des traductions et classer quelques exemples sans entraînement spécifique. Elles montrent aussi leurs limites : des phrases ambiguës peuvent rester proches, et un score élevé n’est pas une preuve d’équivalence. Le résultat parfait en zero-shot est à replacer dans son contexte : un petit jeu de dix phrases claires, et non une évaluation généralisable.</p>
+          <div class="takeaways">
+            <div class="takeaway"><strong>Le sens au-delà des mots</strong><span>Des paraphrases obtiennent une similarité moyenne de 0,959.</span></div>
+            <div class="takeaway"><strong>Une base pour la recherche sémantique</strong><span>Vecteurs, classement, métadonnées et vector stores s’assemblent en briques RAG.</span></div>
+            <div class="takeaway"><strong>Des résultats à valider</strong><span>Plus de données et des cas ambigus seraient nécessaires pour tester la robustesse.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span>TP — Les embeddings avec LangChain & modèles de langage</span>
+      <span>Université Mundiapolis · 3ACINF DATA · 2026–2027</span>
+    </div>
+  </footer>
+  <script>
+    const progress = document.getElementById("progress");
+    const menuButton = document.getElementById("menuButton");
+    const navigation = document.getElementById("navigation");
+
+    function updateProgress() {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = `${scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0}%`;
+    }
+
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    updateProgress();
+
+    menuButton.addEventListener("click", () => {
+      const isOpen = navigation.classList.toggle("open");
+      menuButton.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    navigation.addEventListener("click", event => {
+      if (event.target instanceof HTMLAnchorElement) {
+        navigation.classList.remove("open");
+        menuButton.setAttribute("aria-expanded", "false");
+      }
+    });
+  </script>
+</body>
+</html>
